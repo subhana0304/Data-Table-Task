@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { DataTable } from 'primereact/datatable';
+import { DataTable, DataTablePageEvent } from 'primereact/datatable';
 import { Column } from 'primereact/column';
-import { Checkbox } from 'primereact/checkbox';
-import { fetchArtworks } from '../api'; // Fetch API logic defined earlier
+import { Checkbox, CheckboxChangeEvent } from 'primereact/checkbox';
+import { fetchArtworks } from '../api';
+import { FiChevronDown } from 'react-icons/fi';
+
+
 
 interface Artwork {
-    id: number;
     title: string;
     place_of_origin: string;
     artist_display: string;
@@ -15,58 +17,80 @@ interface Artwork {
 }
 
 const DataTableComponent: React.FC = () => {
-    const [artworks, setArtworks] = useState<Artwork[]>([]); // Holds the current page's data
-    const [selectedRows, setSelectedRows] = useState<{ [key: number]: boolean }>({}); // Stores selected rows by ID
-    const [loading, setLoading] = useState(false); // Loading state for table
-    const [totalRecords, setTotalRecords] = useState(0); // Total records for pagination
-    const [currentPage, setCurrentPage] = useState(1); // Tracks the current page
+    const [artworks, setArtworks] = useState<Artwork[]>([]);
+    const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
+    const [allRowKeys, setAllRowKeys] = useState<string[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [totalRecords, setTotalRecords] = useState(0);
+    const [currentPage, setCurrentPage] = useState<number>(1);
+    const [isHeaderChecked, setIsHeaderChecked] = useState(false);
 
-    // Fetch data for the table
     const fetchData = async (page: number) => {
-        setLoading(true); // Show loading spinner
+        setLoading(true);
         try {
             const data = await fetchArtworks(page);
-            setArtworks(
-                data.data.map((item: any) => ({
-                    id: item.id,
-                    title: item.title,
-                    place_of_origin: item.place_of_origin,
-                    artist_display: item.artist_display,
-                    inscriptions: item.inscriptions,
-                    date_start: item.date_start,
-                    date_end: item.date_end,
-                }))
-            );
+            const fetchedArtworks = data.data.map((item: any) => ({
+                title: item.title,
+                place_of_origin: item.place_of_origin,
+                artist_display: item.artist_display,
+                inscriptions: item.inscriptions,
+                date_start: item.date_start,
+                date_end: item.date_end,
+            }));
+            setArtworks(fetchedArtworks);
             setTotalRecords(data.pagination.total);
+            const newRowKeys = data.data.map((item: any) => item.title);
+            setAllRowKeys((prev) => {
+                const newKeys = new Set([...prev, ...newRowKeys]);
+                return Array.from(newKeys);
+            });
         } catch (error) {
             console.error('Error fetching data:', error);
         }
-        setLoading(false); // Hide loading spinner
+        setLoading(false);
     };
 
-    // Persist row selection across pages
-    const handleRowSelection = (selected: boolean, rowId: number) => {
-        setSelectedRows((prev) => ({
-            ...prev,
-            [rowId]: selected,
-        }));
+    const handleSelectAll = (selected: boolean) => {
+        if (selected) {
+            setSelectedRows(new Set(allRowKeys));
+        } else {
+            setSelectedRows(new Set());
+        }
+        setIsHeaderChecked(selected);
     };
 
-    // Event handler for PrimeReact paginator
-    const onPageChange = (event: any) => {
-        const nextPage = event.page + 1; // PrimeReact uses zero-based indexing
-        setCurrentPage(nextPage);
-        fetchData(nextPage); // Fetch data for the new page
+
+
+    const handleRowSelection = (selected: boolean, rowKey: string) => {
+        setSelectedRows((prev) => {
+            const updatedSelection = new Set(prev);
+            if (selected) {
+                updatedSelection.add(rowKey);
+            } else {
+                updatedSelection.delete(rowKey);
+            }
+            return updatedSelection;
+        });
     };
 
-    // Load data when the component mounts or page changes
+    useEffect(() => {
+        const allSelected = allRowKeys.length > 0 && allRowKeys.every((key) => selectedRows.has(key));
+        setIsHeaderChecked(allSelected);
+    }, [allRowKeys, selectedRows]);
+
+    const onPageChange = (event: DataTablePageEvent) => {
+        const nextPage = event.page ?? 0; // Ensure event.page is valid
+        setCurrentPage(nextPage + 1); // Adjust for 1-based API pagination
+        fetchData(nextPage + 1);
+    };
+
     useEffect(() => {
         fetchData(currentPage);
-    }, []);
+    }, [currentPage]);
 
     return (
         <div className="datatable">
-            <h2 className='text-center text-3xl md:text-5xl font-bold'>Data Table</h2>
+            <h2 className="text-center text-3xl md:text-5xl font-bold">Data Table</h2>
             <DataTable
                 value={artworks}
                 paginator
@@ -74,23 +98,34 @@ const DataTableComponent: React.FC = () => {
                 totalRecords={totalRecords}
                 lazy
                 loading={loading}
-                onPage={onPageChange} // Handles page changes
+                onPage={onPageChange}
                 className="rounded-lg shadow-lg px-5 custom-pagination"
-                rowClassName={() => "border-b border-gray-300"}
+                rowClassName={() => 'border-b border-gray-300'}
             >
-                    {/* Selection Checkbox Column */}
                 <Column
-                    selectionMode="multiple"
-                    headerStyle={{ width: '3em' }}
+                    header={() => (
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
+                            <Checkbox
+                                checked={isHeaderChecked}
+                                onChange={(e: CheckboxChangeEvent) => handleSelectAll(e.checked ?? false)}
+                            />
+                            <FiChevronDown
+                                style={{
+                                    marginLeft: '5px',
+                                    fontSize: '16px', // Adjust size as needed
+                                    cursor: 'pointer', // Makes the arrow clickable
+                                }}
+                            />
+                        </div>
+                    )}
                     body={(rowData) => (
                         <Checkbox
-                            checked={!!selectedRows[rowData.id]}
-                            onChange={(e: any) => handleRowSelection(e.target.checked, rowData.id)}
+                            checked={selectedRows.has(rowData.title)}
+                            onChange={(e: CheckboxChangeEvent) => handleRowSelection(e.checked ?? false, rowData.title)}
                         />
-
                     )}
+                    headerStyle={{ width: '3em' }}
                 />
-                {/* Table Columns */}
                 <Column field="title" header="Title" />
                 <Column field="place_of_origin" header="Place of Origin" />
                 <Column field="artist_display" header="Artist" />
@@ -98,7 +133,6 @@ const DataTableComponent: React.FC = () => {
                 <Column field="date_start" header="Date Start" />
                 <Column field="date_end" header="Date End" />
             </DataTable>
-
         </div>
     );
 };

@@ -4,6 +4,9 @@
 
 .datatable {
   padding: 20px;
+  overflow: hidden;
+  max-width: 100%;
+  white-space: nowrap;
 }
 
 h1, h2 {
@@ -23,3 +26,20 @@ h1, h2 {
   justify-content: center; /* Center-align the pagination */
   padding: 1rem 0; /* Add padding around the pagination */
 }
+/* CSS for preventing overflow and truncating long text */
+.p-datatable .p-datatable-tbody > tr > td {
+  word-wrap: break-word; /* This will break the words if they are too long */
+  overflow: hidden; /* Prevent horizontal scrolling */
+  text-overflow: ellipsis; /* Adds an ellipsis (...) if the text is too long */
+}
+
+.p-datatable th, .p-datatable td {
+  max-width: 200px; /* Set a max-width for columns to avoid overflow */
+  white-space: normal; /* Allow text to wrap instead of overflowing */
+}
+/* Make table scrollable horizontally on small screens */
+.p-datatable {
+  overflow-x: auto;
+  display: block;
+}
+
