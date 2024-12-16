@@ -1,0 +1,25 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.datatable {
+  padding: 20px;
+}
+
+h1, h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+#root > div > div > div > div.p-datatable-wrapper > table > thead{
+  background: #f9fafb !important;
+  border-bottom: 1px solid rgb(191, 187, 187);
+}
+/* Add this CSS to your project */
+.p-paginator .p-paginator-page {
+  margin: 0 0.5rem; /* Adds spacing between page numbers */
+}
+
+.p-paginator {
+  justify-content: center; /* Center-align the pagination */
+  padding: 1rem 0; /* Add padding around the pagination */
+}
