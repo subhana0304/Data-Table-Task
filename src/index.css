@@ -16,6 +16,7 @@ h1, h2 {
 #root > div > div > div > div.p-datatable-wrapper > table > thead{
   background: #f9fafb !important;
   border-bottom: 1px solid rgb(191, 187, 187);
+  padding: 10px 0 !important;
 }
 /* Add this CSS to your project */
 .p-paginator .p-paginator-page {
