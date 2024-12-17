@@ -54,31 +54,6 @@ const DataTableComponent: React.FC = () => {
         setLoading(false);
     };
 
-    // Fetch all rows from all pages and update allRowKeys
-    const fetchAllRowKeys = async () => {
-        try {
-            const allKeys = new Set<string>();
-            let currentPage = 1;
-            let isMoreData = true;
-
-            // Keep fetching until all pages are loaded
-            while (isMoreData) {
-                const data = await fetchArtworks(currentPage);
-                const pageKeys = data.data.map((item: any) => item.title); // Ensure 'pageKeys' is of type string[]
-                const updatedSelection = new Set<string>(selectedRows);
-                pageKeys.forEach((key: string) => {
-                    updatedSelection.add(key);
-                });
-                isMoreData = currentPage < data.pagination.total_pages; // Check if more pages are left
-                currentPage++;
-            }
-
-            return Array.from(allKeys); // Return all unique keys
-        } catch (error) {
-            console.error('Error fetching all row keys:', error);
-            return [];
-        }
-    };
     // Handle selecting all rows
     const handleSelectAll = (selected: boolean) => {
         if (selected) {
@@ -132,23 +107,47 @@ const DataTableComponent: React.FC = () => {
     }, [currentPage]);
 
     // Handle row selection using the OverlayPanel input value
-    const handleOverlaySubmit = () => {
+    const handleOverlaySubmit = async () => {
         const numToSelect = parseInt(inputValue, 10);
         if (!numToSelect || numToSelect <= 0) {
             console.error('Invalid input value. Please enter a valid number.');
             return;
         }
-
-        setSelectedRows((prevSelectedRows) => {
-            const updatedSelectedRows = new Set(prevSelectedRows);
-            for (let i = 0; i < numToSelect && i < allRowKeys.length; i++) {
-                updatedSelectedRows.add(allRowKeys[i]);
+    
+        setLoading(true);
+        const updatedSelectedRows = new Set<string>();
+        let remainingToSelect = numToSelect;
+    
+        // Start by selecting rows from the current page
+        const pageKeys = artworks.map((artwork) => artwork.title);
+        for (let i = 0; i < pageKeys.length && remainingToSelect > 0; i++) {
+            updatedSelectedRows.add(pageKeys[i]);
+            remainingToSelect--;
+        }
+    
+        // If there are still rows to select, fetch data from subsequent pages
+        let currentPageNumber = currentPage;
+        while (remainingToSelect > 0 && currentPageNumber <= Math.ceil(totalRecords / 10)) {
+            // Fetch next page if not already fetched
+            if (currentPageNumber !== currentPage) {
+                const data = await fetchArtworks(currentPageNumber);
+                const newKeys = data.data.map((item: any) => item.title);
+                setAllRowKeys((prev) => Array.from(new Set([...prev, ...newKeys])));
+                // Add rows from the newly fetched page until we reach the desired number
+                for (let i = 0; i < newKeys.length && remainingToSelect > 0; i++) {
+                    updatedSelectedRows.add(newKeys[i]);
+                    remainingToSelect--;
+                }
             }
-            return updatedSelectedRows;
-        });
-
+            currentPageNumber++;
+        }
+    
+        // Update the selected rows and hide the overlay
+        setSelectedRows(updatedSelectedRows);
         overlayPanelRef.current?.hide();
+        setLoading(false);
     };
+    
 
     return (
         <div className="datatable">
