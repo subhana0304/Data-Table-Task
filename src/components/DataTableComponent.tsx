@@ -54,15 +54,51 @@ const DataTableComponent: React.FC = () => {
         setLoading(false);
     };
 
+    // Fetch all rows from all pages and update allRowKeys
+    const fetchAllRowKeys = async () => {
+        try {
+            const allKeys = new Set<string>();
+            let currentPage = 1;
+            let isMoreData = true;
+
+            // Keep fetching until all pages are loaded
+            while (isMoreData) {
+                const data = await fetchArtworks(currentPage);
+                const pageKeys = data.data.map((item: any) => item.title); // Ensure 'pageKeys' is of type string[]
+                const updatedSelection = new Set<string>(selectedRows);
+                pageKeys.forEach((key: string) => {
+                    updatedSelection.add(key);
+                });
+                isMoreData = currentPage < data.pagination.total_pages; // Check if more pages are left
+                currentPage++;
+            }
+
+            return Array.from(allKeys); // Return all unique keys
+        } catch (error) {
+            console.error('Error fetching all row keys:', error);
+            return [];
+        }
+    };
     // Handle selecting all rows
     const handleSelectAll = (selected: boolean) => {
         if (selected) {
-            setSelectedRows(new Set(allRowKeys)); // Select all rows across all pages
+            // Create a new Set with the currently selected rows
+            const updatedSelection = new Set<string>(selectedRows);
+
+            // Add all keys from the current page
+            const pageKeys = artworks.map((artwork) => artwork.title); // Assuming titles are unique row keys
+            pageKeys.forEach((key: string) => {
+                updatedSelection.add(key);
+            });
+
+            setSelectedRows(updatedSelection); // Update state with the new selection
         } else {
-            setSelectedRows(new Set()); // Deselect all rows
+            setSelectedRows(new Set()); // Clear all selected rows
         }
-        setIsHeaderChecked(selected);
+        setIsHeaderChecked(selected); // Update header checkbox state
     };
+
+
 
     // Handle individual row selection
     const handleRowSelection = (selected: boolean, rowKey: string) => {
